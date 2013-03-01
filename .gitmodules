@@ -10,3 +10,6 @@
 [submodule "glk-dev"]
 	path = glk-dev
 	url = git://github.com/erkyrath/glk-dev.git
+[submodule "git"]
+	path = git
+	url = git://github.com/DavidKinder/Git.git

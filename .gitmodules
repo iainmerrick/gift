@@ -1,0 +1,12 @@
+[submodule "luajit-2.0"]
+	path = luajit-2.0
+	url = http://luajit.org/git/luajit-2.0.git
+[submodule "cheapglk"]
+	path = cheapglk
+	url = git://github.com/erkyrath/cheapglk.git
+[submodule "remglk"]
+	path = remglk
+	url = git://github.com/erkyrath/remglk.git
+[submodule "glk-dev"]
+	path = glk-dev
+	url = git://github.com/erkyrath/glk-dev.git

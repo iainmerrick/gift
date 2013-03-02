@@ -12,7 +12,7 @@ local size = file:seek("end")
 file:seek("set", 0)
 print("Size is:", size)
 
-assert(band(size, 3) == 0, "Size must be a multiple of 4!")
+assert(bit.band(size, 3) == 0, "Size must be a multiple of 4!")
 size = size / 4
 
 ffi.cdef[[

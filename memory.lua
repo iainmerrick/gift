@@ -9,14 +9,6 @@ local lshift = bit.lshift
 local rshift = bit.rshift
 local tobit = bit.tobit
 
-local xxxx = 0xffffffff
-local xx__ = 0xffff0000
-local __xx = 0x0000ffff
-local x___ = 0xff000000
-local _x__ = 0x00ff0000
-local __x_ = 0x0000ff00
-local ___x = 0x000000ff
-
 function memory.read32(g, addr)
   local word = rshift(addr, 2)
   local byte = band(addr, 3)
@@ -36,7 +28,7 @@ function memory.read16(g, addr)
   if byte == 0 then
     return rshift(val, 16)
   elseif byte == 2 then
-    return band(val, __xx)
+    return band(val, 0xffff)
   end
   return bor(
     lshift(memory.read8(g, addr), 8),
@@ -50,11 +42,11 @@ function memory.read8(g, addr)
   if byte == 0 then
     return rshift(val, 24)
   elseif byte == 1 then
-    return band(rshift(val, 16), ___x)
+    return band(rshift(val, 16), 0xff)
   elseif byte == 2 then
-    return band(rshift(val, 8), ___x)
+    return band(rshift(val, 8), 0xff)
   else
-    return band(val, ___x)
+    return band(val, 0xff)
   end
 end
 
@@ -66,54 +58,83 @@ function memory.write32(g, addr, val)
     return
   end
   memory.write16(g, addr, rshift(val, 16))
-  memory.write16(g, addr + 2, band(val, __xx))
+  memory.write16(g, addr + 2, band(val, 0xffff))
 end
 
 function memory.write16(g, addr, val)
-  val = band(val, __xx)
+  val = band(val, 0xffff)
   local word = rshift(addr, 2)
   local byte = band(addr, 3)
   if byte == 0 then
     g.memory[word] = bor(
       lshift(val, 16),
-      band(g.memory[word], __xx))
+      band(g.memory[word], 0xffff))
     return
   elseif byte == 2 then
     g.memory[word] = bor(
-      band(g.memory[word], xx__),
-      band(val, __xx))
+      band(g.memory[word], 0xffff0000),
+      band(val, 0xffff))
     return
   end
   memory.write8(g, addr, rshift(val, 8))
-  memory.write8(g, addr + 1, band(val, ___x))
+  memory.write8(g, addr + 1, band(val, 0xff))
 end
 
 function memory.write8(g, addr, val)
-  val = band(val, ___x)
+  val = band(val, 0xff)
   local word = rshift(addr, 2)
   local byte = band(addr, 3)
   if byte == 0 then
     g.memory[word] = bor(
       lshift(val, 24),
-      band(g.memory[word], bnot(x___)))
+      band(g.memory[word], bnot(0xff000000)))
   elseif byte == 1 then
     g.memory[word] = bor(
       lshift(val, 16),
-      band(g.memory[word], bnot(_x__)))
+      band(g.memory[word], bnot(0x00ff0000)))
   elseif byte == 2 then
     g.memory[word] = bor(
       lshift(val, 8),
-      band(g.memory[word], bnot(__x_)))
+      band(g.memory[word], bnot(0x0000ff00)))
   else
     g.memory[word] = bor(
       val,
-      band(g.memory[word], bnot(___x)))
+      band(g.memory[word], bnot(0xff)))
   end
+end
+
+function memory.Reader(g, addr)
+  return {
+    addr = function()
+      return addr
+    end;
+    peek8 = function()
+      return memory.read8(g, addr)
+    end;
+    peek16 = function()
+      return memory.read16(g, addr)
+    end;
+    peek32 = function()
+      return memory.read32(g, addr)
+    end;
+    read8 = function()
+      addr = addr + 1
+      return memory.read8(g, addr - 1)
+    end;
+    read16 = function()
+      addr = addr + 2
+      return memory.read16(g, addr - 2)
+    end;
+    read32 = function()
+      addr = addr + 4
+      return memory.read32(g, addr - 4)
+    end;
+  }
 end
 
 -- Unit test
 
-mock = {
+local mock = {
   memory = {
     [0] = 0x00112233;
     [1] = 0x44556677;
@@ -142,6 +163,18 @@ assert(memory.read8(mock, 4) == tobit(0x44))
 assert(memory.read8(mock, 5) == tobit(0x55))
 assert(memory.read8(mock, 6) == tobit(0x66))
 assert(memory.read8(mock, 7) == tobit(0x77))
+
+local r = memory.Reader(mock, 0)
+assert(r.addr() == 0)
+assert(r.read8() == tobit(0x00))
+assert(r.addr() == 1)
+assert(r.peek8() == tobit(0x11))
+assert(r.peek16() == tobit(0x1122))
+assert(r.peek32() == tobit(0x11223344))
+assert(r.read16() == tobit(0x1122))
+assert(r.read32() == tobit(0x33445566))
+assert(r.read8() == tobit(0x77))
+assert(r.addr() == 8)
 
 memory.write32(mock, 0, 0xa0a1a2a3)
 assert(memory.read32(mock, 0) == tobit(0xa0a1a2a3))

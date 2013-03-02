@@ -5,13 +5,12 @@ ffi = require("ffi")
 io = require("io")
 string = require("string")
 
+disasm = require("disasm")
 memory = require("memory")
 
 local file = io.open("test/Advent.ulx", "r")
 local size = file:seek("end")
 file:seek("set", 0)
-print("Size is:", size)
-
 assert(bit.band(size, 3) == 0, "Size must be a multiple of 4!")
 size = size / 4
 
@@ -33,4 +32,18 @@ for i = 0,size-1 do
 end
 file.close()
 
-assert(memory.read32(g, 0) == 0x476c756c)
+local r = memory.Reader(g, 0)
+local magic = r.read32()
+local version = r.read32()
+local ramStart = r.read32()
+local extStart = r.read32()
+local endMem = r.read32()
+local stackSize = r.read32()
+local startFunc = r.read32()
+local stringTable = r.read32()
+local checksum = r.read32()
+
+assert(magic == 0x476c756c)
+print(disasm.parseFunction(g, startFunc))
+print(disasm.parseFunction(g, 72))
+print(disasm.parseFunction(g, 66736))

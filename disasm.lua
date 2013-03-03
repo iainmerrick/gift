@@ -6,6 +6,7 @@ local table = require("table")
 
 local memory = require("memory")
 local oo = require("oo")
+local operands = require("operands")
 
 -- A note on terminology:
 --  * Mode: a glulx addressing mode, in the range 0-15
@@ -35,92 +36,26 @@ function disasm.Operation:emit(buffer)
   end
 end
 
-disasm.Argument = oo.Class()
-
-function disasm.Argument:init(mode, value)
-  self.mode = mode
-  self.value = value
-end
-
-local function Mode(name, size)
-  assert(type(name) == "string")
-  assert(type(size) == "number")
-  return oo.Prototype() {
-    name = name;
-    parse = function(self, reader)
-      if size == 0 then
-        return disasm.Argument(self, 0)
-      elseif size == 1 then
-        return disasm.Argument(self, reader:read8())
-      elseif size == 2 then
-        return disasm.Argument(self, reader:read16())
-      else
-        return disasm.Argument(self, reader:read32())
-      end
-    end;
-  }
-end
-
-local function ConstMode(size)
-  return Mode("const", size)
-end
-
-local function AddrMode(size)
-  return Mode("addr", size)
-end
-
-local function StackMode(size)
-  return Mode("stack", size)
-end
-
-local function LocalMode(size)
-  return Mode("local", size)
-end
-
-local function RamMode(size)
-  return Mode("ram", size)
-end
-
-local MODES = {
-  [0x0] = ConstMode(0),
-  [0x1] = ConstMode(1),
-  [0x2] = ConstMode(2),
-  [0x3] = ConstMode(4),
-  [0x4] = nil,
-  [0x5] = AddrMode(1),
-  [0x6] = AddrMode(2),
-  [0x7] = AddrMode(4),
-  [0x8] = StackMode(0),
-  [0x9] = LocalMode(1),
-  [0xa] = LocalMode(2),
-  [0xb] = LocalMode(4),
-  [0xc] = nil,
-  [0xd] = RamMode(1),
-  [0xe] = RamMode(2),
-  [0xf] = RamMode(4),
-}
-
 local function Opcode(name, numLoads, numStores)
-  return oo.Prototype() {
+  return oo.Prototype {
     name = name;
     parse = function(self, reader)
       local modes = {}
-      local numOperands = numLoads + numStores
-      local numModeBytes = bit.rshift(numOperands + 1, 1);
+      local numModeBytes = bit.rshift(numLoads + numStores + 1, 1);
       for i = 1,numModeBytes do
         local byte = reader:read8()
-        modes[2*i - 1] = MODES[bit.band(byte, 0xf)]
-        if numOperands >= 2*i then
-          modes[2*i] = MODES[bit.rshift(byte, 4)]
+        modes[2*i - 1] = bit.band(byte, 0xf)
+        if (numLoads + numStores) >= 2*i then
+          modes[2*i] = bit.rshift(byte, 4)
         end
       end
       local loads = {}
       for i = 1,numLoads do
-        loads[i] = modes[i]:parse(reader)
+        loads[i] = operands.parseOperand(modes[i], reader)
       end
       local stores = {}
       for i = 1,numStores do
-        stores[i] = modes[numLoads + i]:parse(reader)
+        stores[i] = operands.parseOperand(modes[numLoads + i], reader)
       end
       return disasm.Operation(self, loads, stores)
     end;

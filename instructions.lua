@@ -2,26 +2,26 @@ local instructions = {}
 
 local oo = require("oo")
 local operands = require("operands")
+local utils = require("utils")
 
-instructions.Instruction = oo.Class()
+instructions.Instruction = oo.Class("Instruction")
 
-function instructions.Instruction:init(opcode, loads, stores)
-  self.opcode = opcode
-  self.loads = loads
-  self.stores = stores
+function instructions.Instruction:init(addr, opcode, loads, stores)
+  self.addr = addr      -- Start address of this instruction
+  self.opcode = opcode  -- An Opcode object
+  self.loads = loads    -- List of Operands, one per input
+  self.stores = stores  -- List of Operands, one per output
 end
 
-function instructions.Instruction:emit(buffer)
-  buffer:emit(self.opcode.name)
-  for i = 1,#self.loads do
-    buffer:emit(self.loads[i].mode.name, self.loads[i].value)
-  end
+function instructions.Instruction:tostring()
+  local s = utils.Joiner(" ")
+  s:addFormat("%08x %s", self.addr, self.opcode.name)
+  s:addEach(self.loads)
   if #self.stores > 0 then
-    buffer:emit("->")
+    s:add("->")
+    s:addEach(self.stores)
   end
-  for i = 1,#self.stores do
-    buffer:emit(self.stores[i].mode.name, self.stores[i].value)
-  end
+  return s
 end
 
 function instructions.Instruction:alwaysExits()
@@ -33,6 +33,7 @@ local function Opcode(name, numLoads, numStores)
     name = name;
     alwaysExits = false;
     parse = function(self, reader)
+      local addr = reader:addr()
       local modes = {}
       local numModeBytes = bit.rshift(numLoads + numStores + 1, 1);
       for i = 1,numModeBytes do
@@ -50,7 +51,7 @@ local function Opcode(name, numLoads, numStores)
       for i = 1,numStores do
         stores[i] = operands.parseOperand(modes[numLoads + i], reader)
       end
-      return instructions.Instruction(self, loads, stores)
+      return instructions.Instruction(addr, self, loads, stores)
     end;
   }
 end

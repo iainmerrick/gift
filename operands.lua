@@ -2,11 +2,15 @@ local operands = {}
 
 local oo = require("oo")
 
-operands.Operand = oo.Class()
+operands.Operand = oo.Class("Operand")
 
 function operands.Operand:init(mode, value)
-  self.mode = mode
-  self.value = value
+  self.mode = mode    -- Addressing mode (a Mode object)
+  self.value = value  -- 32-bit value
+end
+
+function operands.Operand:tostring()
+  return string.format("%s %x", self.mode.name, self.value)
 end
 
 local function Mode(name, size)

@@ -4,7 +4,7 @@ local oo = {}
 
 local alloc = {}
 function alloc:__call(...)
-  obj = {}
+  local obj = {}
   self.init(obj, ...)
   setmetatable(obj, self)
   return obj
@@ -14,10 +14,21 @@ function defaultInit(self, args)
   assert(args == nil, "Non-empty default args, probably bad")
 end
 
-function oo.Class()
+function tostringWrapper(self)
+  return tostring(self:tostring())
+end
+
+function defaultTostring(self)
+  return self.class_name
+end
+
+function oo.Class(class_name)
   local class = {}
   class.__index = class
+  class.__tostring = tostringWrapper
   class.init = defaultInit
+  class.tostring = defaultTostring
+  class.class_name = class_name or "(unnamed Class)"
   setmetatable(class, alloc)
   return class
 end
@@ -42,7 +53,7 @@ end
 
 -- Unit test
 
-local Foo = oo.Class()
+local Foo = oo.Class("Foo")
 function Foo:hello()
   return "hello"
 end
@@ -53,6 +64,7 @@ end
 local foo = Foo()
 assert(foo:hello() == "hello")
 assert(foo:add1(2) == 3)
+assert(tostring(foo) == "Foo")
 
 local Bar = oo.Class()
 function Bar:init(n)
@@ -62,13 +74,18 @@ function Bar:inc()
   self.value = self.value + 1
   return self.value
 end
+function Bar:tostring()
+  return "Bar(" .. self.value .. ")"
+end
 
 local bar1 = Bar()
 local bar2 = Bar(10)
 assert(bar1:inc() == 1)
 assert(bar1:inc() == 2)
+assert(tostring(bar1) == "Bar(2)")
 assert(bar2:inc() == 11)
 assert(bar2:inc() == 12)
+assert(tostring(bar2) == "Bar(12)")
 
 local Hat = oo.Prototype {
   name = "hat",

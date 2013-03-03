@@ -5,7 +5,7 @@ ffi = require("ffi")
 io = require("io")
 string = require("string")
 
-disasm = require("disasm")
+functions = require("functions")
 memory = require("memory")
 oo = require("oo")
 
@@ -46,28 +46,7 @@ local checksum = r:read32()
 
 assert(magic == 0x476c756c)
 
-local Buffer = oo.Class()
-
-function Buffer:init()
-  self.size = 0
-  self.data = {}
-end
-
-function Buffer:emit(...)
-  args = {...}
-  for i = 1,#args do
-    self.data[self.size + i] = args[i]
-  end
-  self.size = self.size + #args
-end
-
-function Buffer:build()
-  return table.concat(self.data, " ")
-end
-
-local buffer = Buffer()
-disasm.parseFunction(g, startFunc, buffer)
-disasm.parseFunction(g, 72, buffer)
-disasm.parseFunction(g, 66736, buffer)
-disasm.parseFunction(g, 69746, buffer)
-print(buffer:build())
+print(functions.parseFunction(g, startFunc))
+print(functions.parseFunction(g, 72))
+print(functions.parseFunction(g, 66736))
+print(functions.parseFunction(g, 69746))

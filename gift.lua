@@ -7,6 +7,7 @@ string = require("string")
 
 disasm = require("disasm")
 memory = require("memory")
+oo = require("oo")
 
 local file = io.open("test/Advent.ulx", "r")
 local size = file:seek("end")
@@ -33,17 +34,39 @@ end
 file.close()
 
 local r = memory.Reader(g, 0)
-local magic = r.read32()
-local version = r.read32()
-local ramStart = r.read32()
-local extStart = r.read32()
-local endMem = r.read32()
-local stackSize = r.read32()
-local startFunc = r.read32()
-local stringTable = r.read32()
-local checksum = r.read32()
+local magic = r:read32()
+local version = r:read32()
+local ramStart = r:read32()
+local extStart = r:read32()
+local endMem = r:read32()
+local stackSize = r:read32()
+local startFunc = r:read32()
+local stringTable = r:read32()
+local checksum = r:read32()
 
 assert(magic == 0x476c756c)
-print(disasm.parseFunction(g, startFunc))
-print(disasm.parseFunction(g, 72))
-print(disasm.parseFunction(g, 66736))
+
+local Buffer = oo.Class()
+
+function Buffer:init()
+  self.size = 0
+  self.data = {}
+end
+
+function Buffer:emit(...)
+  args = {...}
+  for i = 1,#args do
+    self.data[self.size + i] = args[i]
+  end
+  self.size = self.size + #args
+end
+
+function Buffer:build()
+  return table.concat(self.data, " ")
+end
+
+local buffer = Buffer()
+disasm.parseFunction(g, startFunc, buffer)
+disasm.parseFunction(g, 72, buffer)
+disasm.parseFunction(g, 66736, buffer)
+print(buffer:build())

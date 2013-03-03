@@ -2,6 +2,8 @@ local memory = {}
 
 local bit = require("bit")
 
+local oo = require("oo")
+
 local band = bit.band
 local bor = bit.bor
 local bnot = bit.bnot
@@ -103,33 +105,42 @@ function memory.write8(g, addr, val)
   end
 end
 
-function memory.Reader(g, addr)
-  return {
-    addr = function()
-      return addr
-    end;
-    peek8 = function()
-      return memory.read8(g, addr)
-    end;
-    peek16 = function()
-      return memory.read16(g, addr)
-    end;
-    peek32 = function()
-      return memory.read32(g, addr)
-    end;
-    read8 = function()
-      addr = addr + 1
-      return memory.read8(g, addr - 1)
-    end;
-    read16 = function()
-      addr = addr + 2
-      return memory.read16(g, addr - 2)
-    end;
-    read32 = function()
-      addr = addr + 4
-      return memory.read32(g, addr - 4)
-    end;
-  }
+memory.Reader = oo.Class()
+
+function memory.Reader:init(g, addr)
+  self._g = g
+  self._addr = addr
+end
+
+function memory.Reader:addr()
+  return self._addr
+end
+
+function memory.Reader:peek8()
+  return memory.read8(self._g, self._addr)
+end
+
+function memory.Reader:peek16()
+  return memory.read16(self._g, self._addr)
+end
+
+function memory.Reader:peek32()
+  return memory.read32(self._g, self._addr)
+end
+
+function memory.Reader:read8()
+  self._addr = self._addr + 1
+  return memory.read8(self._g, self._addr - 1)
+end
+
+function memory.Reader:read16()
+  self._addr = self._addr + 2
+  return memory.read16(self._g, self._addr - 2)
+end
+
+function memory.Reader:read32()
+  self._addr = self._addr + 4
+  return memory.read32(self._g, self._addr - 4)
 end
 
 -- Unit test
@@ -165,16 +176,16 @@ assert(memory.read8(mock, 6) == tobit(0x66))
 assert(memory.read8(mock, 7) == tobit(0x77))
 
 local r = memory.Reader(mock, 0)
-assert(r.addr() == 0)
-assert(r.read8() == tobit(0x00))
-assert(r.addr() == 1)
-assert(r.peek8() == tobit(0x11))
-assert(r.peek16() == tobit(0x1122))
-assert(r.peek32() == tobit(0x11223344))
-assert(r.read16() == tobit(0x1122))
-assert(r.read32() == tobit(0x33445566))
-assert(r.read8() == tobit(0x77))
-assert(r.addr() == 8)
+assert(r:addr() == 0)
+assert(r:read8() == tobit(0x00))
+assert(r:addr() == 1)
+assert(r:peek8() == tobit(0x11))
+assert(r:peek16() == tobit(0x1122))
+assert(r:peek32() == tobit(0x11223344))
+assert(r:read16() == tobit(0x1122))
+assert(r:read32() == tobit(0x33445566))
+assert(r:read8() == tobit(0x77))
+assert(r:addr() == 8)
 
 memory.write32(mock, 0, 0xa0a1a2a3)
 assert(memory.read32(mock, 0) == tobit(0xa0a1a2a3))

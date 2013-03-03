@@ -25,23 +25,20 @@ function functions.Function:init(addr, kind, numLocals, code)
   self.locals = {}            -- Sequence of argument names
   if kind == LOCAL_ARGS then
     for i = 1,numLocals do
-      self.locals[i] = "arg_" .. i
+      self.locals[i] = "arg" .. i
     end
   end
 end
 
 function functions.Function:tostring()
-  local s = utils.Joiner("\n")
-  s:addFormat("%08x", self.addr)
-  s:addIfElse(self.kind == STACK_ARGS,
-    "  Type: stack",
-    "  Type: locals")
-  s:add("  Locals: " .. self.numLocals)
-  for i, c in ipairs(self.code) do
-    s:add("  " .. tostring(c))
-  end
-  s:add("")
-  return s
+  return utils.Joiner("\n")
+    :addFormat("%08x", self.addr)
+    :pushPrefix("  ")
+      :addIfElse(self.kind == STACK_ARGS, "Type: stack", "Type: locals")
+      :add("Locals: " .. self.numLocals)
+      :addEach(self.code)
+    :popPrefix()
+    :add("")
 end
 
 function functions.Function:toCode()
@@ -49,47 +46,45 @@ function functions.Function:toCode()
   -- Function header
   local functionName = string.format("glulx_%08x", self.addr)
   if self.kind == LOCAL_ARGS then
-    local args = utils.Joiner(", ")
-    args:add("vm")
-    args:addEach(self.locals)
-    s:addFormat("function %s(%s)", functionName, args)
+    s:addFormat("function %s(%s)",
+        functionName,
+        utils.Joiner(", "):add("vm"):addEach(self.locals))
   else
     s:addFormat("function %s(vm, ...)", functionName)
     s:add("  local stackArgs = {...}")
   end
+  s:pushPrefix("  ")
   -- Push a new frame onto the stack.
   do
     assert(self.numLocals <= 255)
     local frameLen = 4 * (3 + self.numLocals)
     local localsPos = 12
     local localsFormat = bor(lshift(4, 24), lshift(self.numLocals, 16))
-    s:addFormat("  vm:push(%s)", frameLen)
-    s:addFormat("  vm:push(%s)", localsPos)
-    s:addFormat("  vm:push(0x%x)", localsFormat)
+    s:addFormat("vm:push(%s)", frameLen)
+    s:addFormat("vm:push(%s)", localsPos)
+    s:addFormat("vm:push(0x%x)", localsFormat)
     if self.kind == LOCAL_ARGS then
       -- Push function arguments into the frame
       for i = 1,self.numLocals do
-        s:addFormat("  vm:push(%s)", self.locals[i])
+        s:addFormat("vm:push(%s)", self.locals[i])
       end
     else
       -- Fill the frame with zeroes, then push args onto the stack.
-      s:addFormat("  for i = 1,%s do", self.numLocals)
-      s:addFormat("    vm:push(0)")
-      s:add("  end")
-      s:add("  for i = 1,#stackArgs do")
-      s:add("    vm:push(stackArgs[i])")
-      s:add("  end")
-      s:add("  vm:push(#stackArgs)")
+      s:addFormat("for i = 1,%s do", self.numLocals)
+      s:addFormat("  vm:push(0)")
+      s:add("end")
+      s:add("for i = 1,#stackArgs do")
+      s:add("  vm:push(stackArgs[i])")
+      s:add("end")
+      s:add("vm:push(#stackArgs)")
     end
   end
   -- Function body
   do
-    for i, c in ipairs(self.code) do
-      s:add("  " .. tostring(c))
-    end
+    s:addEach(self.code)
   end
   -- Function footer
-  s:add("end", "")
+  s:popPrefix():add("end", "")
   return s
 end
 

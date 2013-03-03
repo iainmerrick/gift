@@ -14,14 +14,11 @@ function instructions.Instruction:init(addr, opcode, loads, stores)
 end
 
 function instructions.Instruction:tostring()
-  local s = utils.Joiner(" ")
-  s:addFormat("%08x %s", self.addr, self.opcode.name)
-  s:addEach(self.loads)
-  if #self.stores > 0 then
-    s:add("->")
-    s:addEach(self.stores)
-  end
-  return s
+  return utils.Joiner(" ")
+      :addFormat("%08x %s", self.addr, self.opcode.name)
+      :addEach(self.loads)
+      :addIf(#self.stores > 0, "->")
+      :addEach(self.stores)
 end
 
 function instructions.Instruction:alwaysExits()

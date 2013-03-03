@@ -46,10 +46,6 @@ local checksum = r:read32()
 
 assert(magic == 0x476c756c)
 
-print(functions.parseFunction(g, startFunc))
-print(functions.parseFunction(g, 72))
-print(functions.parseFunction(g, 66736))
-print(functions.parseFunction(g, 69746))
 print(functions.parseFunction(g, startFunc):toCode())
 print(functions.parseFunction(g, 72):toCode())
 print(functions.parseFunction(g, 66736):toCode())

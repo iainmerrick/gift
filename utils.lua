@@ -7,6 +7,22 @@ utils.Joiner = oo.Class("Joiner")
 function utils.Joiner:init(sep)
   self._sep = sep
   self._data = {}
+  self._prefixes = {""}
+end
+
+function utils.Joiner:prefix()
+  return self._prefixes[#self._prefixes]
+end
+
+function utils.Joiner:pushPrefix(prefix)
+  self._prefixes[#self._prefixes + 1] = self:prefix() .. prefix
+  return self
+end
+
+function utils.Joiner:popPrefix()
+  assert(#self._prefixes > 1)
+  table.remove(self._prefixes)
+  return self
 end
 
 function utils.Joiner:addFormat(fmt, ...)
@@ -14,11 +30,18 @@ function utils.Joiner:addFormat(fmt, ...)
   return self
 end
 
-function utils.Joiner:addIfElse(cond, a, b)
+function utils.Joiner:addIf(cond, s)
   if cond then
-    self:_add(a)
+    self:_add(s)
+  end
+  return self
+end
+
+function utils.Joiner:addIfElse(cond, s1, s2)
+  if cond then
+    self:_add(s1)
   else
-    self:_add(b)
+    self:_add(s2)
   end
   return self
 end
@@ -39,7 +62,7 @@ function utils.Joiner:add(...)
 end
 
 function utils.Joiner:_add(value)
-  self._data[#self._data + 1] = tostring(value)
+  self._data[#self._data + 1] = self:prefix() .. tostring(value)
 end
 
 function utils.Joiner:tostring()
@@ -54,5 +77,21 @@ j:addIfElse(100 > 200, 100, 200)
 j:addEach({"a", "b", "c"})
 j:add("foo"):add("bar", "xyzzy")
 assert(tostring(j) == "2013-03-03 200 a b c foo bar xyzzy")
+
+local j2 = utils.Joiner("\n")
+j2:add("1")
+j2:pushPrefix("* ")
+j2:add("1.1")
+j2:pushPrefix("- ")
+j2:add("1.1.1")
+j2:popPrefix()
+j2:add("1.2")
+j2:popPrefix()
+j2:add("2")
+assert(tostring(j2) == [[1
+* 1.1
+* - 1.1.1
+* 1.2
+2]])
 
 return utils

@@ -80,12 +80,11 @@ function functions.Function:toCode()
     end
   end
   -- Function body
-  do
-    s:addEach(self.code)
+  for i = 1,#self.code do
+    s:add(self.code[i]:toCode())
   end
   -- Function footer
-  s:popPrefix():add("end", "")
-  return s
+  return s:popPrefix():add("end", "")
 end
 
 function functions.parseFunction(g, addr)

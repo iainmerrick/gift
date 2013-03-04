@@ -62,7 +62,9 @@ function utils.Joiner:add(...)
 end
 
 function utils.Joiner:_add(value)
-  self._data[#self._data + 1] = self:prefix() .. tostring(value)
+  if value then
+    self._data[#self._data + 1] = self:prefix() .. tostring(value)
+  end
 end
 
 function utils.Joiner:tostring()

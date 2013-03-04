@@ -13,6 +13,14 @@ function operands.Operand:tostring()
   return string.format("%s %x", self.mode.name, self.value)
 end
 
+function operands.Operand:toLoadCode()
+  return self.mode:loadCode(self.value)
+end
+
+function operands.Operand:toStoreCode(var)
+  return self.mode:storeCode(self.value, var)
+end
+
 local function Mode(name, size)
   assert(type(name) == "string")
   assert(type(size) == "number")
@@ -31,27 +39,66 @@ local function Mode(name, size)
       end
       return operands.Operand(self, value)
     end;
+    loadCode = function(self, value)
+      assert(false, "Don't know how to load this operand!")
+    end;
+    storeCode = function(self, value, var)
+      return nil
+    end;
   }
 end
 
 local function ConstMode(size)
-  return Mode("const", size)
+  return Mode("const", size) {
+    loadCode = function(self, value)
+      return value
+    end;
+  }
 end
 
 local function AddrMode(size)
-  return Mode("addr", size)
-end
-
-local function StackMode(size)
-  return Mode("stack", size)
-end
-
-local function LocalMode(size)
-  return Mode("local", size)
+  return Mode("addr", size) {
+    loadCode = function(self, value)
+      return "vm:read32(" .. value .. ")"
+    end;
+    storeCode = function(self, value, var)
+      return "vm:write32(" .. value .. ", " .. var .. ")"
+    end;
+  }
 end
 
 local function RamMode(size)
-  return Mode("ram", size)
+  return Mode("ram", size) {
+    loadCode = function(self, value)
+      -- TODO: ramStart is a compile-time constant
+      return "vm:read32(vm.ramStart() + " .. value .. ")"
+    end;
+    storeCode = function(self, value, var)
+      return "vm:write32(vm.ramStart() + " .. value .. ", " .. var .. ")"
+    end;
+  }
+end
+
+local function StackMode(size)
+  return Mode("stack", size) {
+    loadCode = function(self, value)
+      return "vm:pop()"
+    end;
+    storeCode = function(self, value, var)
+      return "vm:push(" .. var .. ")"
+    end;
+  }
+end
+
+local function LocalMode(size)
+  return Mode("local", size) {
+    loadCode = function(self, value)
+      return "vm:getLocal(" .. value .. ")"
+    end;
+    storeCode = function(self, value, var)
+      return "vm:setLocal(" .. value .. ", " .. var .. ")"
+    end;
+  }
 end
 
 local MODES = {

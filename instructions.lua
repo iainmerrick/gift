@@ -15,19 +15,39 @@ end
 
 function instructions.Instruction:tostring()
   return utils.Joiner(" ")
-      :addFormat("%08x %s", self.addr, self.opcode.name)
+      :add(self.opcode.name)
       :addEach(self.loads)
       :addIf(#self.stores > 0, "->")
       :addEach(self.stores)
+end
+
+function instructions.Instruction:toCode()
+  local s = utils.Joiner("\n")
+  s:addFormat("::label_%08x:: -- %s", self.addr, self)
+  s:pushPrefix("  "):add("do"):pushPrefix("  ")
+  do
+    for i = 1,#self.loads do
+      s:addFormat("local L%d = %s", i, self.loads[i]:toLoadCode())
+    end
+    for i = 1,#self.stores do
+      s:addFormat("local S%d", i)
+    end
+    s:add(self.opcode.code)
+    for i = 1,#self.stores do
+      s:add(self.stores[i]:toStoreCode("S" .. i))
+    end
+  end
+  return s:popPrefix():add("end")
 end
 
 function instructions.Instruction:alwaysExits()
   return self.opcode.alwaysExits
 end
 
-local function Opcode(name, numLoads, numStores)
+local function Opcode(name, code, numLoads, numStores)
   return oo.Prototype {
     name = name;
+    code = code or ("-- UNIMPLEMENTED: " .. name);
     alwaysExits = false;
     parse = function(self, reader)
       local addr = reader:addr()
@@ -53,19 +73,19 @@ local function Opcode(name, numLoads, numStores)
   }
 end
 
-local function OpcodeL(name) return Opcode(name, 1, 0) end
-local function OpcodeLL(name) return Opcode(name, 2, 0) end
-local function OpcodeLLL(name) return Opcode(name, 3, 0) end
+local function OpcodeL(name, code) return Opcode(name, code, 1, 0) end
+local function OpcodeLL(name, code) return Opcode(name, code, 2, 0) end
+local function OpcodeLLL(name, code) return Opcode(name, code, 3, 0) end
 
-local function OpcodeS(name) return Opcode(name, 0, 1) end
-local function OpcodeLS(name) return Opcode(name, 1, 1) end
-local function OpcodeLLS(name) return Opcode(name, 2, 1) end
+local function OpcodeS(name, code) return Opcode(name, code, 0, 1) end
+local function OpcodeLS(name, code) return Opcode(name, code, 1, 1) end
+local function OpcodeLLS(name, code) return Opcode(name, code, 2, 1) end
 
 local OPCODES = {
 
-  [0x00] = Opcode("nop", 0, 0),
-  [0x10] = OpcodeLLS("add"),
-  [0x11] = OpcodeLLS("sub"),
+  [0x00] = Opcode("nop", "-- nop", 0, 0),
+  [0x10] = OpcodeLLS("add", "S1 = L1 + L2"),
+  [0x11] = OpcodeLLS("sub", "S1 = L1 - L2"),
   -- [0x12] = mul
   -- [0x13] = div
   -- [0x14] = mod
@@ -90,8 +110,8 @@ local OPCODES = {
   [0x2B] = OpcodeLLL("jgeu"),
   [0x2C] = OpcodeLLL("jgtu"),
   [0x2D] = OpcodeLLL("jleu"),
-  [0x30] = OpcodeLLS("call"),
-  [0x31] = OpcodeL("return") { alwaysExits = true },
+  [0x30] = OpcodeLLS("call", "S1 = L1.call(L2)"),
+  [0x31] = OpcodeL("return", "return L1") { alwaysExits = true },
   -- [0x32] = catch
   -- [0x33] = throw
   -- [0x34] = tailcall

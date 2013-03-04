@@ -22,10 +22,10 @@ function functions.Function:init(addr, kind, numLocals, code)
   self.kind = kind            -- STACK_ARGS or LOCAL_ARGS
   self.numLocals = numLocals  -- Number of local variables
   self.code = code            -- Sequence of Instruction objects
-  self.locals = {}            -- Sequence of argument names
+  self.localArgs = {}            -- Sequence of argument names
   if kind == LOCAL_ARGS then
     for i = 1,numLocals do
-      self.locals[i] = "arg" .. i
+      self.localArgs[i] = "arg" .. i
     end
   end
 end
@@ -48,7 +48,7 @@ function functions.Function:toCode()
   if self.kind == LOCAL_ARGS then
     s:addFormat("function %s(%s)",
         functionName,
-        utils.Joiner(", "):add("vm"):addEach(self.locals))
+        utils.Joiner(", "):add("vm"):addEach(self.localArgs))
   else
     s:addFormat("function %s(vm, ...)", functionName)
     s:add("  local stackArgs = {...}")
@@ -66,7 +66,7 @@ function functions.Function:toCode()
     if self.kind == LOCAL_ARGS then
       -- Push function arguments into the frame
       for i = 1,self.numLocals do
-        s:addFormat("vm:push(%s)", self.locals[i])
+        s:addFormat("vm:push(%s)", self.localArgs[i])
       end
     else
       -- Fill the frame with zeroes, then push args onto the stack.

@@ -48,5 +48,3 @@ assert(magic == 0x476c756c)
 
 print(functions.parseFunction(g, startFunc):toCode())
 print(functions.parseFunction(g, 72):toCode())
-print(functions.parseFunction(g, 66736):toCode())
-print(functions.parseFunction(g, 69746):toCode())

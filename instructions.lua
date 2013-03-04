@@ -132,7 +132,7 @@ local OPCODES = {
   -- [0x32] = catch
   -- [0x33] = throw
   -- [0x34] = tailcall
-  [0x40] = OpcodeLS("copy"),
+  [0x40] = OpcodeLS("copy", "S1 = L1"),
   -- [0x41] = copys
   -- [0x42] = copyb
   -- [0x44] = sexs

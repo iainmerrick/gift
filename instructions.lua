@@ -21,8 +21,9 @@ function Instruction:tostring()
       :addEach(self.stores)
 end
 
-function Instruction:toCode(s)
-  s:addFormat("::label_%08x:: -- %s", self.addr, self)
+function Instruction:toCode(cc, s)
+  s:addFormat("::label_%08x::", self.addr)
+  s:addFormat("print(\"* %08x %s\")", self.addr, self)
   s:add("do"):pushPrefix("  ")
   do
     for i = 1,#self.loads do
@@ -31,7 +32,7 @@ function Instruction:toCode(s)
     for i = 1,#self.stores do
       s:addFormat("local S%d", i)
     end
-    s:add(self.opcode:toCode(s, unpack(self.loads)))
+    s:add(self.opcode:toCode(cc, s, unpack(self.loads)))
     for i = 1,#self.stores do
       s:add(self.stores[i]:toStoreCode("S" .. i))
     end
@@ -44,11 +45,11 @@ function Instruction:alwaysExits()
 end
 
 local function Opcode(name, code, numLoads, numStores)
-  code = code or ("-- UNIMPLEMENTED: " .. name)
+  code = code or string.format("assert(false, \"UNIMPLEMENTED: %s\")", name)
   return oo.Prototype {
     name = name;
     alwaysExits = false;
-    toCode = function(self, s)
+    toCode = function(self, cc, s)
       s:add(code)
     end;
     parse = function(self, reader)
@@ -114,16 +115,16 @@ local OPCODES = {
   [0x2D] = OpcodeLLL("jleu"),
 
   [0x30] = OpcodeLLS("call") {
-    toCode = function(self, s, L1, L2)
+    toCode = function(self, cc, s, L1, L2)
       s:add("local args = {}")
       s:add("for i = 1,L2 do")
       s:add("  args[#args] = vm:pop()")
       s:add("end")
       if L1:isConst() then
-        local func = string.format("glulx_%08x", L1.value)
-        s:add("S1 = " .. func .. "(unpack(args))")
+        local func = cc:functionName(L1.value)
+        s:add("S1 = " .. func .. "(vm, unpack(args))")
       else
-        s:add("S1 = vm.call(L1, args)")
+        s:add("S1 = vm:call(L1, unpack(args))")
       end
     end;
   },

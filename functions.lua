@@ -41,9 +41,9 @@ function Function:tostring()
     :add("")
 end
 
-function Function:toCode(s)
+function Function:toCode(cc, s)
+  local functionName = cc:functionName(self.addr)
   -- Function header
-  local functionName = string.format("glulx_%08x", self.addr)
   if self.kind == LOCAL_ARGS then
     s:addFormat("function %s(%s)",
         functionName,
@@ -80,7 +80,7 @@ function Function:toCode(s)
   end
   -- Function body
   for i = 1,#self.code do
-    self.code[i]:toCode(s)
+    self.code[i]:toCode(cc, s)
   end
   -- Function footer
   s:popPrefix():add("end", "")

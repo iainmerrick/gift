@@ -19,7 +19,4 @@ size = size / 4
 local vm = machine.fromFile(file, size)
 file:close()
 
-local s = utils.Joiner("\n")
-functions.parseFunction(vm:reader(vm.startFunc)):toCode(s)
-functions.parseFunction(vm:reader(72)):toCode(s)
-print(s)
+vm:call(vm.startFunc)

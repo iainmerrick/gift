@@ -15,9 +15,9 @@ local utils = require("utils")
 local STACK_ARGS = 0xc0
 local LOCAL_ARGS = 0xc1
 
-functions.Function = oo.Class("Function")
+local Function = oo.Class("Function")
 
-function functions.Function:init(addr, kind, numLocals, code)
+function Function:init(addr, kind, numLocals, code)
   self.addr = addr            -- Start address of this function
   self.kind = kind            -- STACK_ARGS or LOCAL_ARGS
   self.numLocals = numLocals  -- Number of local variables
@@ -30,7 +30,7 @@ function functions.Function:init(addr, kind, numLocals, code)
   end
 end
 
-function functions.Function:tostring()
+function Function:tostring()
   return utils.Joiner("\n")
     :addFormat("%08x", self.addr)
     :pushPrefix("  ")
@@ -41,8 +41,7 @@ function functions.Function:tostring()
     :add("")
 end
 
-function functions.Function:toCode()
-  local s = utils.Joiner("\n")
+function Function:toCode(s)
   -- Function header
   local functionName = string.format("glulx_%08x", self.addr)
   if self.kind == LOCAL_ARGS then
@@ -81,14 +80,14 @@ function functions.Function:toCode()
   end
   -- Function body
   for i = 1,#self.code do
-    s:add(self.code[i]:toCode())
+    self.code[i]:toCode(s)
   end
   -- Function footer
-  return s:popPrefix():add("end", "")
+  s:popPrefix():add("end", "")
 end
 
-function functions.parseFunction(g, addr)
-  local reader = memory.Reader(g, addr)
+function functions.parseFunction(reader)
+  local addr = reader:addr()
   local kind = reader:read8()
   assert(kind == STACK_ARGS or kind == LOCAL_ARGS)
 
@@ -108,7 +107,7 @@ function functions.parseFunction(g, addr)
     code[#code + 1] = instructions.parseInstruction(reader)
   until code[#code]:alwaysExits();
 
-  return functions.Function(addr, kind, numLocals, code)
+  return Function(addr, kind, numLocals, code)
 end
 
 return functions

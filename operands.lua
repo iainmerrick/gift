@@ -2,23 +2,27 @@ local operands = {}
 
 local oo = require("oo")
 
-operands.Operand = oo.Class("Operand")
+local Operand = oo.Class("Operand")
 
-function operands.Operand:init(mode, value)
+function Operand:init(mode, value)
   self.mode = mode    -- Addressing mode (a Mode object)
   self.value = value  -- 32-bit value
 end
 
-function operands.Operand:tostring()
+function Operand:tostring()
   return string.format("%s %x", self.mode.name, self.value)
 end
 
-function operands.Operand:toLoadCode()
+function Operand:toLoadCode()
   return self.mode:loadCode(self.value)
 end
 
-function operands.Operand:toStoreCode(var)
+function Operand:toStoreCode(var)
   return self.mode:storeCode(self.value, var)
+end
+
+function Operand:isConst()
+  return self.mode.isConst
 end
 
 local function Mode(name, size)
@@ -26,6 +30,7 @@ local function Mode(name, size)
   assert(type(size) == "number")
   return oo.Prototype() {
     name = name;
+    isConst = false;
     parse = function(self, reader)
       local value
       if size == 0 then
@@ -37,7 +42,7 @@ local function Mode(name, size)
       else
         value = reader:read32()
       end
-      return operands.Operand(self, value)
+      return Operand(self, value)
     end;
     loadCode = function(self, value)
       assert(false, "Don't know how to load this operand!")
@@ -50,6 +55,7 @@ end
 
 local function ConstMode(size)
   return Mode("const", size) {
+    isConst = true;
     loadCode = function(self, value)
       return value
     end;
@@ -57,6 +63,7 @@ local function ConstMode(size)
 end
 
 local function AddrMode(size)
+  -- TODO: could set isConst if address is in ROM.
   return Mode("addr", size) {
     loadCode = function(self, value)
       return "vm:read32(" .. value .. ")"

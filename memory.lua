@@ -11,36 +11,36 @@ local lshift = bit.lshift
 local rshift = bit.rshift
 local tobit = bit.tobit
 
-function memory.read32(g, addr)
+function memory.read32(mem, addr)
   local word = rshift(addr, 2)
   local byte = band(addr, 3)
-  local val = g.memory[word]
+  local val = mem[word]
   if byte == 0 then
     return tobit(val)
   end
   return bor(
-    lshift(memory.read16(g, addr), 16),
-    memory.read16(g, addr + 2))
+    lshift(memory.read16(mem, addr), 16),
+    memory.read16(mem, addr + 2))
 end
 
-function memory.read16(g, addr)
+function memory.read16(mem, addr)
   local word = rshift(addr, 2)
   local byte = band(addr, 3)
-  local val = g.memory[word]
+  local val = mem[word]
   if byte == 0 then
     return rshift(val, 16)
   elseif byte == 2 then
     return band(val, 0xffff)
   end
   return bor(
-    lshift(memory.read8(g, addr), 8),
-    memory.read8(g, addr + 1))
+    lshift(memory.read8(mem, addr), 8),
+    memory.read8(mem, addr + 1))
 end
 
-function memory.read8(g, addr)
+function memory.read8(mem, addr)
   local word = rshift(addr, 2)
   local byte = band(addr, 3)
-  local val = g.memory[word]
+  local val = mem[word]
   if byte == 0 then
     return rshift(val, 24)
   elseif byte == 1 then
@@ -52,63 +52,63 @@ function memory.read8(g, addr)
   end
 end
 
-function memory.write32(g, addr, val)
+function memory.write32(mem, addr, val)
   local word = rshift(addr, 2)
   local byte = band(addr, 3)
   if byte == 0 then
-    g.memory[word] = val
+    mem[word] = val
     return
   end
-  memory.write16(g, addr, rshift(val, 16))
-  memory.write16(g, addr + 2, band(val, 0xffff))
+  memory.write16(mem, addr, rshift(val, 16))
+  memory.write16(mem, addr + 2, band(val, 0xffff))
 end
 
-function memory.write16(g, addr, val)
+function memory.write16(mem, addr, val)
   val = band(val, 0xffff)
   local word = rshift(addr, 2)
   local byte = band(addr, 3)
   if byte == 0 then
-    g.memory[word] = bor(
+    mem[word] = bor(
       lshift(val, 16),
-      band(g.memory[word], 0xffff))
+      band(mem[word], 0xffff))
     return
   elseif byte == 2 then
-    g.memory[word] = bor(
-      band(g.memory[word], 0xffff0000),
+    mem[word] = bor(
+      band(mem[word], 0xffff0000),
       band(val, 0xffff))
     return
   end
-  memory.write8(g, addr, rshift(val, 8))
-  memory.write8(g, addr + 1, band(val, 0xff))
+  memory.write8(mem, addr, rshift(val, 8))
+  memory.write8(mem, addr + 1, band(val, 0xff))
 end
 
-function memory.write8(g, addr, val)
+function memory.write8(mem, addr, val)
   val = band(val, 0xff)
   local word = rshift(addr, 2)
   local byte = band(addr, 3)
   if byte == 0 then
-    g.memory[word] = bor(
+    mem[word] = bor(
       lshift(val, 24),
-      band(g.memory[word], bnot(0xff000000)))
+      band(mem[word], bnot(0xff000000)))
   elseif byte == 1 then
-    g.memory[word] = bor(
+    mem[word] = bor(
       lshift(val, 16),
-      band(g.memory[word], bnot(0x00ff0000)))
+      band(mem[word], bnot(0x00ff0000)))
   elseif byte == 2 then
-    g.memory[word] = bor(
+    mem[word] = bor(
       lshift(val, 8),
-      band(g.memory[word], bnot(0x0000ff00)))
+      band(mem[word], bnot(0x0000ff00)))
   else
-    g.memory[word] = bor(
+    mem[word] = bor(
       val,
-      band(g.memory[word], bnot(0xff)))
+      band(mem[word], bnot(0xff)))
   end
 end
 
 memory.Reader = oo.Class()
 
-function memory.Reader:init(g, addr)
-  self._g = g
+function memory.Reader:init(mem, addr)
+  self._g = mem
   self._addr = addr
 end
 
@@ -146,10 +146,8 @@ end
 -- Unit test
 
 local mock = {
-  memory = {
-    [0] = 0x00112233;
-    [1] = 0x44556677;
-  }
+  [0] = 0x00112233;
+  [1] = 0x44556677;
 }
 
 assert(memory.read32(mock, 0) == tobit(0x00112233))

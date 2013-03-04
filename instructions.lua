@@ -4,16 +4,16 @@ local oo = require("oo")
 local operands = require("operands")
 local utils = require("utils")
 
-instructions.Instruction = oo.Class("Instruction")
+local Instruction = oo.Class("Instruction")
 
-function instructions.Instruction:init(addr, opcode, loads, stores)
+function Instruction:init(addr, opcode, loads, stores)
   self.addr = addr      -- Start address of this instruction
   self.opcode = opcode  -- An Opcode object
   self.loads = loads    -- List of Operands, one per input
   self.stores = stores  -- List of Operands, one per output
 end
 
-function instructions.Instruction:tostring()
+function Instruction:tostring()
   return utils.Joiner(" ")
       :add(self.opcode.name)
       :addEach(self.loads)
@@ -21,10 +21,9 @@ function instructions.Instruction:tostring()
       :addEach(self.stores)
 end
 
-function instructions.Instruction:toCode()
-  local s = utils.Joiner("\n")
+function Instruction:toCode(s)
   s:addFormat("::label_%08x:: -- %s", self.addr, self)
-  s:pushPrefix("  "):add("do"):pushPrefix("  ")
+  s:add("do"):pushPrefix("  ")
   do
     for i = 1,#self.loads do
       s:addFormat("local L%d = %s", i, self.loads[i]:toLoadCode())
@@ -32,7 +31,7 @@ function instructions.Instruction:toCode()
     for i = 1,#self.stores do
       s:addFormat("local S%d", i)
     end
-    s:add(self.opcode.code)
+    s:add(self.opcode:toCode(s, unpack(self.loads)))
     for i = 1,#self.stores do
       s:add(self.stores[i]:toStoreCode("S" .. i))
     end
@@ -40,15 +39,18 @@ function instructions.Instruction:toCode()
   return s:popPrefix():add("end")
 end
 
-function instructions.Instruction:alwaysExits()
+function Instruction:alwaysExits()
   return self.opcode.alwaysExits
 end
 
 local function Opcode(name, code, numLoads, numStores)
+  code = code or ("-- UNIMPLEMENTED: " .. name)
   return oo.Prototype {
     name = name;
-    code = code or ("-- UNIMPLEMENTED: " .. name);
     alwaysExits = false;
+    toCode = function(self, s)
+      s:add(code)
+    end;
     parse = function(self, reader)
       local addr = reader:addr()
       local modes = {}
@@ -68,7 +70,7 @@ local function Opcode(name, code, numLoads, numStores)
       for i = 1,numStores do
         stores[i] = operands.parseOperand(modes[numLoads + i], reader)
       end
-      return instructions.Instruction(addr, self, loads, stores)
+      return Instruction(addr, self, loads, stores)
     end;
   }
 end
@@ -110,7 +112,21 @@ local OPCODES = {
   [0x2B] = OpcodeLLL("jgeu"),
   [0x2C] = OpcodeLLL("jgtu"),
   [0x2D] = OpcodeLLL("jleu"),
-  [0x30] = OpcodeLLS("call", "S1 = L1.call(L2)"),
+
+  [0x30] = OpcodeLLS("call") {
+    toCode = function(self, s, L1, L2)
+      s:add("local args = {}")
+      s:add("for i = 1,L2 do")
+      s:add("  args[#args] = vm:pop()")
+      s:add("end")
+      if L1:isConst() then
+        local func = string.format("glulx_%08x", L1.value)
+        s:add("S1 = " .. func .. "(unpack(args))")
+      else
+        s:add("S1 = vm.call(L1, args)")
+      end
+    end;
+  },
   [0x31] = OpcodeL("return", "return L1") { alwaysExits = true },
   -- [0x32] = catch
   -- [0x33] = throw

@@ -6,11 +6,12 @@ local utils = require("utils")
 
 local Instruction = oo.Class("Instruction")
 
-function Instruction:init(addr, opcode, loads, stores)
-  self.addr = addr      -- Start address of this instruction
-  self.opcode = opcode  -- An Opcode object
-  self.loads = loads    -- List of Operands, one per input
-  self.stores = stores  -- List of Operands, one per output
+function Instruction:init(addr, nextAddr, opcode, loads, stores)
+  self.addr = addr         -- Start address of this instruction
+  self.nextAddr = nextAddr -- Address of the next instruction
+  self.opcode = opcode     -- An Opcode object
+  self.loads = loads       -- List of Operands, one per input
+  self.stores = stores     -- List of Operands, one per output
 end
 
 function Instruction:tostring()
@@ -22,7 +23,7 @@ function Instruction:tostring()
 end
 
 function Instruction:toCode(cc, s)
-  s:addFormat("::label_%08x::", self.addr)
+  s:add("::" .. cc:labelName(self.addr) .. "::")
   s:addFormat("print(\"* %08x %s\")", self.addr, self)
   s:add("do"):pushPrefix("  ")
   do
@@ -32,7 +33,7 @@ function Instruction:toCode(cc, s)
     for i = 1,#self.stores do
       s:addFormat("local S%d", i)
     end
-    s:add(self.opcode:toCode(cc, s, unpack(self.loads)))
+    s:add(self.opcode:toCode(self, cc, s, unpack(self.loads)))
     for i = 1,#self.stores do
       s:add(self.stores[i]:toStoreCode("S" .. i))
     end
@@ -49,7 +50,7 @@ local function Opcode(name, code, numLoads, numStores)
   return oo.Prototype {
     name = name;
     alwaysExits = false;
-    toCode = function(self, cc, s)
+    toCode = function(self, instr, cc, s)
       s:add(code)
     end;
     parse = function(self, reader)
@@ -71,7 +72,8 @@ local function Opcode(name, code, numLoads, numStores)
       for i = 1,numStores do
         stores[i] = operands.parseOperand(modes[numLoads + i], reader)
       end
-      return Instruction(addr, self, loads, stores)
+      local nextAddr = reader:addr()
+      return Instruction(addr, nextAddr, self, loads, stores)
     end;
   }
 end
@@ -83,6 +85,31 @@ local function OpcodeLLL(name, code) return Opcode(name, code, 3, 0) end
 local function OpcodeS(name, code) return Opcode(name, code, 0, 1) end
 local function OpcodeLS(name, code) return Opcode(name, code, 1, 1) end
 local function OpcodeLLS(name, code) return Opcode(name, code, 2, 1) end
+
+local function Branch(name, code, numLoads)
+  return Opcode(name, code, numLoads, 0) {
+    toCode = function(self, instr, cc, s, ...)
+      loads = {...}
+      target = loads[#loads]
+      s:add("if " .. code .. " then"):pushPrefix("  ")
+      if target.value == 0 then
+        s:add("return 0")
+      elseif target.value == 1 then
+        s:add("return 1")
+      elseif target:isConst() then
+        local dest = instr.nextAddr + bit.tobit(target.value) - 2
+        s:add("goto " .. cc:labelName(dest))
+      else
+        s:add("assert(false, \"Non-const branch! Not implemented yet\")")
+      end
+      s:popPrefix():add("end")
+    end;
+  }
+end
+
+local function BranchL(name, code) return Branch(name, code, 1) end
+local function BranchLL(name, code) return Branch(name, code, 2) end
+local function BranchLLL(name, code) return Branch(name, code, 3) end
 
 local OPCODES = {
 
@@ -100,22 +127,22 @@ local OPCODES = {
   -- [0x1C] = shiftl
   -- [0x1D] = sshiftr
   -- [0x1E] = ushiftr
-  [0x20] = OpcodeL("jump") { alwaysExits = true },
-  [0x22] = OpcodeLL("jz"),
-  [0x23] = OpcodeLL("jnz"),
-  [0x24] = OpcodeLLL("jeq"),
-  [0x25] = OpcodeLLL("jne"),
-  [0x26] = OpcodeLLL("jlt"),
-  [0x27] = OpcodeLLL("jge"),
-  [0x28] = OpcodeLLL("jgt"),
-  [0x29] = OpcodeLLL("jle"),
+  [0x20] = BranchL("jump", "true") { alwaysExits = true },
+  [0x22] = BranchLL("jz", "L2 == 0"),
+  [0x23] = BranchLL("jnz", "L2 != 0"),
+  [0x24] = BranchLLL("jeq", "L2 == L3"),
+  [0x25] = BranchLLL("jne", "L2 != L3"),
+  [0x26] = BranchLLL("jlt", "L2 < L3"),
+  [0x27] = BranchLLL("jge", "L2 >= L3"),
+  [0x28] = BranchLLL("jgt", "L2 > L3"),
+  [0x29] = BranchLLL("jle", "L2 <= L3"),
   [0x2A] = OpcodeLLL("jltu"),
   [0x2B] = OpcodeLLL("jgeu"),
   [0x2C] = OpcodeLLL("jgtu"),
   [0x2D] = OpcodeLLL("jleu"),
 
   [0x30] = OpcodeLLS("call") {
-    toCode = function(self, cc, s, L1, L2)
+    toCode = function(self, instr, cc, s, L1, L2)
       s:add("local args = {}")
       s:add("for i = 1,L2 do")
       s:add("  args[#args] = vm:pop()")

@@ -60,6 +60,10 @@ function Machine:setLocal(offset, value)
   self.framePtr[index] = value
 end
 
+function Machine:labelName(addr)
+  return string.format("label_%08x", addr)
+end
+
 function Machine:baseName(addr)
   return string.format("glulx_%08x", addr)
 end

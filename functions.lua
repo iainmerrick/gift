@@ -65,7 +65,7 @@ function Function:toCode(cc, s)
     if self.kind == LOCAL_ARGS then
       -- Push function arguments into the frame
       for i = 1,self.numLocals do
-        s:addFormat("vm:push(%s)", self.localArgs[i])
+        s:addFormat("vm:push(%s or 0)", self.localArgs[i])
       end
     else
       -- Fill the frame with zeroes, then push args onto the stack.
@@ -73,7 +73,7 @@ function Function:toCode(cc, s)
       s:addFormat("  vm:push(0)")
       s:add("end")
       s:add("for i = 1,#stackArgs do")
-      s:add("  vm:push(stackArgs[i])")
+      s:add("  vm:push(stackArgs[i] or 0)")
       s:add("end")
       s:add("vm:push(#stackArgs)")
     end

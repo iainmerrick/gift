@@ -1,12 +1,13 @@
 local machine = {}
 
+local bit = require("bit")
 local ffi = require("ffi")
 
 local oo = require("oo")
 
-uint32_array_t = ffi.typeof("uint32_t[?]")
+local uint32_array_t = ffi.typeof("uint32_t[?]")
 
-Machine = oo.Class("Machine")
+local Machine = oo.Class("Machine")
 
 function Machine:init(data)
   self.memory = data
@@ -49,13 +50,23 @@ function Machine:call(addr, ...)
   return self:functionPtr(addr)(self, ...)
 end
 
+function Machine:getLocal(offset)
+  local index = bit.rshift(12 + offset, 2)
+  return self.framePtr[index]
+end
+
+function Machine:setLocal(offset, value)
+  local index = bit.rshift(12 + offset, 2)
+  self.framePtr[index] = value
+end
+
 function Machine:baseName(addr)
   return string.format("glulx_%08x", addr)
 end
 
 local sandbox = {}
 
-STUB = [[
+local STUB = [[
 sandbox, compile = ...
 function %s(vm, ...)
   return compile(%d)(vm, ...)

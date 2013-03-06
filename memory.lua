@@ -9,6 +9,7 @@ local bor = bit.bor
 local bnot = bit.bnot
 local lshift = bit.lshift
 local rshift = bit.rshift
+local arshift = bit.arshift
 local tobit = bit.tobit
 
 function memory.read32(mem, addr)
@@ -50,6 +51,16 @@ function memory.read8(mem, addr)
   else
     return band(val, 0xff)
   end
+end
+
+-- Sign-extend 8 bits -> 32 bits
+function memory.sex8(val)
+  return arshift(lshift(val, 24), 24)
+end
+
+-- Sign-extend 8 bits -> 32 bits
+function memory.sex16(val)
+  return arshift(lshift(val, 16), 16)
 end
 
 function memory.write32(mem, addr, val)
@@ -137,9 +148,17 @@ function memory.Reader:read8()
   return memory.read8(self._g, self._addr - 1)
 end
 
+function memory.Reader:read8s()
+  return memory.sex8(self:read8())
+end
+
 function memory.Reader:read16()
   self._addr = self._addr + 2
   return memory.read16(self._g, self._addr - 2)
+end
+
+function memory.Reader:read16s()
+  return memory.sex16(self:read16())
 end
 
 function memory.Reader:read32()
@@ -204,5 +223,15 @@ assert(memory.read32(mock, 4) == tobit(0xd4d5d677))
 memory.write32(mock, 4, 0xe4e5e6e7)
 assert(memory.read32(mock, 0) == tobit(0xa0b1c2d3))
 assert(memory.read32(mock, 4) == tobit(0xe4e5e6e7))
+
+assert(memory.sex8(0x00) == 0)
+assert(memory.sex8(0x7f) == 127)
+assert(memory.sex8(0x80) == -128)
+assert(memory.sex8(0xff) == -1)
+
+assert(memory.sex16(0x0000) == 0)
+assert(memory.sex16(0x7fff) == 32767)
+assert(memory.sex16(0x8000) == -32768)
+assert(memory.sex16(0xffff) == -1)
 
 return memory

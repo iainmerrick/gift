@@ -100,30 +100,30 @@ local function OpcodeLLS(name, code) return Opcode(name, code, 2, 1) end
 local function Branch(name, code, numLoads)
   return Opcode(name, code, numLoads, 0) {
     toCode = function(self, instr, cc, s, ...)
-      loads = {...}
-      target = loads[#loads]
+      local loads = {...}
+      local target = loads[#loads]
       s:add("if " .. code .. " then"):pushPrefix("  ")
-      if not target:isConst() then
+      local dest = target:const()
+      if dest == nil then
         s:add("assert(false, \"Non-const branch! Not implemented yet\")")
-      elseif target.value == 0 then
+      elseif dest == 0 then
         s:add("return 0")
-      elseif target.value == 1 then
+      elseif dest == 1 then
         s:add("return 1")
       else
-        local dest = instr._nextAddr + bit.tobit(target.value) - 2
+        dest = instr._nextAddr + dest - 2
         s:add("goto " .. cc:labelName(dest))
       end
       s:popPrefix():add("end")
     end;
     branchAddr = function(self, instr, ...)
-      loads = {...}
-      target = loads[#loads]
-      if not target:isConst() then
-        return nil
-      elseif target.value == 0 or target.value == 1 then
+      local loads = {...}
+      local target = loads[#loads]
+      local dest = target:const()
+      if dest == nil or dest == 0 or dest == 1 then
         return nil
       else
-        return instr._nextAddr + bit.tobit(target.value) - 2
+        return instr._nextAddr + dest - 2
       end
     end;
   }
@@ -170,7 +170,7 @@ local OPCODES = {
       s:add("  args[#args] = vm:pop()")
       s:add("end")
       if L1:isConst() then
-        local func = cc:functionName(L1.value)
+        local func = cc:functionName(L1:const())
         s:add("S1 = " .. func .. "(vm, unpack(args))")
       else
         s:add("S1 = vm:call(L1, unpack(args))")

@@ -1,28 +1,34 @@
 local operands = {}
 
+local memory = require("memory")
 local oo = require("oo")
 
 local Operand = oo.Class("Operand")
 
 function Operand:init(mode, value)
-  self.mode = mode    -- Addressing mode (a Mode object)
-  self.value = value  -- 32-bit value
+  self._mode = mode    -- Addressing mode (a Mode object)
+  self._value = value  -- 32-bit value
 end
 
 function Operand:tostring()
-  return string.format("%s %x", self.mode.name, self.value)
+  return string.format("%s %x", self._mode._name, self._value)
 end
 
 function Operand:toLoadCode()
-  return self.mode:loadCode(self.value)
+  return self._mode:loadCode(self._value)
 end
 
 function Operand:toStoreCode(var)
-  return self.mode:storeCode(self.value, var)
+  return self._mode:storeCode(self._value, var)
 end
 
 function Operand:isConst()
-  return self.mode.isConst
+  return self._mode.isConst
+end
+
+function Operand:const()
+  -- Delegate to Mode as we might need to sign-extend the value
+  return self._mode:const(self._value)
 end
 
 local function Mode(name, size)
@@ -31,6 +37,9 @@ local function Mode(name, size)
   return oo.Prototype() {
     name = name;
     isConst = false;
+    const = function(self, value)
+      return nil
+    end;
     parse = function(self, reader)
       local value
       if size == 0 then
@@ -56,6 +65,17 @@ end
 local function ConstMode(size)
   return Mode("const", size) {
     isConst = true;
+    const = function(self, value)
+      if size == 0 then
+        return 0
+      elseif size == 1 then
+        return memory.sex8(value)
+      elseif size == 2 then
+        return memory.sex16(value)
+      else
+        return value
+      end
+    end;
     loadCode = function(self, value)
       return value
     end;

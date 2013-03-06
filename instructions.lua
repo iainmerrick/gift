@@ -7,42 +7,50 @@ local utils = require("utils")
 local Instruction = oo.Class("Instruction")
 
 function Instruction:init(addr, nextAddr, opcode, loads, stores)
-  self.addr = addr         -- Start address of this instruction
-  self.nextAddr = nextAddr -- Address of the next instruction
-  self.opcode = opcode     -- An Opcode object
-  self.loads = loads       -- List of Operands, one per input
-  self.stores = stores     -- List of Operands, one per output
+  self._addr = addr         -- Start address of this instruction
+  self._nextAddr = nextAddr -- Address of the next instruction
+  self._opcode = opcode     -- An Opcode object
+  self._loads = loads       -- List of Operands, one per input
+  self._stores = stores     -- List of Operands, one per output
 end
 
 function Instruction:tostring()
   return utils.Joiner(" ")
-      :add(self.opcode.name)
-      :addEach(self.loads)
-      :addIf(#self.stores > 0, "->")
-      :addEach(self.stores)
+      :add(self._opcode.name)
+      :addEach(self._loads)
+      :addIf(#self._stores > 0, "->")
+      :addEach(self._stores)
 end
 
 function Instruction:toCode(cc, s)
-  s:add("::" .. cc:labelName(self.addr) .. "::")
-  s:addFormat("print(\"* %08x %s\")", self.addr, self)
+  s:add("::" .. cc:labelName(self._addr) .. "::")
+  s:addFormat("print(\"* %08x %s\")", self._addr, self)
   s:add("do"):pushPrefix("  ")
   do
-    for i = 1,#self.loads do
-      s:addFormat("local L%d = %s", i, self.loads[i]:toLoadCode())
+    for i = 1,#self._loads do
+      s:addFormat("local L%d = %s", i, self._loads[i]:toLoadCode())
     end
-    for i = 1,#self.stores do
+    for i = 1,#self._stores do
       s:addFormat("local S%d", i)
     end
-    s:add(self.opcode:toCode(self, cc, s, unpack(self.loads)))
-    for i = 1,#self.stores do
-      s:add(self.stores[i]:toStoreCode("S" .. i))
+    s:add(self._opcode:toCode(self, cc, s, unpack(self._loads)))
+    for i = 1,#self._stores do
+      s:add(self._stores[i]:toStoreCode("S" .. i))
     end
   end
   return s:popPrefix():add("end")
 end
 
-function Instruction:alwaysExits()
-  return self.opcode.alwaysExits
+function Instruction:branchAddr()
+  return self._opcode:branchAddr(self, unpack(self._loads))
+end
+
+function Instruction:nextAddr()
+  if self._opcode.alwaysExits then
+    return nil
+  else
+    return self._nextAddr
+  end
 end
 
 local function Opcode(name, code, numLoads, numStores)
@@ -52,6 +60,9 @@ local function Opcode(name, code, numLoads, numStores)
     alwaysExits = false;
     toCode = function(self, instr, cc, s)
       s:add(code)
+    end;
+    branchAddr = function(self, loads)
+      return nil
     end;
     parse = function(self, reader)
       local addr = reader:addr()
@@ -92,17 +103,28 @@ local function Branch(name, code, numLoads)
       loads = {...}
       target = loads[#loads]
       s:add("if " .. code .. " then"):pushPrefix("  ")
-      if target.value == 0 then
+      if not target:isConst() then
+        s:add("assert(false, \"Non-const branch! Not implemented yet\")")
+      elseif target.value == 0 then
         s:add("return 0")
       elseif target.value == 1 then
         s:add("return 1")
-      elseif target:isConst() then
-        local dest = instr.nextAddr + bit.tobit(target.value) - 2
-        s:add("goto " .. cc:labelName(dest))
       else
-        s:add("assert(false, \"Non-const branch! Not implemented yet\")")
+        local dest = instr._nextAddr + bit.tobit(target.value) - 2
+        s:add("goto " .. cc:labelName(dest))
       end
       s:popPrefix():add("end")
+    end;
+    branchAddr = function(self, instr, ...)
+      loads = {...}
+      target = loads[#loads]
+      if not target:isConst() then
+        return nil
+      elseif target.value == 0 or target.value == 1 then
+        return nil
+      else
+        return instr._nextAddr + bit.tobit(target.value) - 2
+      end
     end;
   }
 end
@@ -246,7 +268,10 @@ local OPCODES = {
 }
 
 local function UnknownOpcode(code)
-  return Opcode(string.format("(unknown: 0x%x)", code), 0, 0) {
+  return Opcode(
+      string.format("(unknown: 0x%x)", code),
+      "assert(false, \"Unknown opcode!\")",
+      0, 0) {
     alwaysExits = true;
   }
 end

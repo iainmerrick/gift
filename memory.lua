@@ -116,6 +116,10 @@ function memory.Reader:addr()
   return self._addr
 end
 
+function memory.Reader:setAddr(addr)
+  self._addr = addr
+end
+
 function memory.Reader:peek8()
   return memory.read8(self._g, self._addr)
 end

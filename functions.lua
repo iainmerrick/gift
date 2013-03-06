@@ -102,10 +102,19 @@ function functions.parseFunction(reader)
     end
   end
 
+  local addrs = { reader:addr() }
   local code = {}
-  repeat
-    code[#code + 1] = instructions.parseInstruction(reader)
-  until code[#code]:alwaysExits();
+  while #addrs > 0 do
+    reader:setAddr(table.remove(addrs))
+    local instr = instructions.parseInstruction(reader)
+    if instr:branchAddr() then
+      addrs[#addrs + 1] = instr:branchAddr()
+    end
+    if instr:nextAddr() then
+      addrs[#addrs + 1] = instr:nextAddr()
+    end
+    code[#code + 1] = instr
+  end
 
   return Function(addr, kind, numLocals, code)
 end

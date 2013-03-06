@@ -11,7 +11,7 @@ function Operand:init(mode, value)
 end
 
 function Operand:tostring()
-  return string.format("%s %x", self._mode._name, self._value)
+  return string.format("%s %x", self._mode.name, self._value)
 end
 
 function Operand:toLoadCode()

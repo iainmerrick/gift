@@ -22,7 +22,7 @@ function Function:init(addr, kind, numLocals, code)
   self.kind = kind            -- STACK_ARGS or LOCAL_ARGS
   self.numLocals = numLocals  -- Number of local variables
   self.code = code            -- Sequence of Instruction objects
-  self.localArgs = {}            -- Sequence of argument names
+  self.localArgs = {}         -- Sequence of argument names
   if kind == LOCAL_ARGS then
     for i = 1,numLocals do
       self.localArgs[i] = "arg" .. i
@@ -80,7 +80,13 @@ function Function:toCode(cc, s)
   end
   -- Function body
   for i = 1,#self.code do
-    self.code[i]:toCode(cc, s)
+    local c1 = self.code[i]
+    local c2 = self.code[i+1]
+    c1:toCode(cc, s)
+    local addr = c1:nextAddr()
+    if addr and (c2 == nil or c2:addr() ~= addr) then
+      s:add("goto " .. cc:labelName(addr))
+    end
   end
   -- Function footer
   s:popPrefix():add("end", "")
@@ -102,18 +108,23 @@ function functions.parseFunction(reader)
     end
   end
 
-  local addrs = { reader:addr() }
-  local code = {}
-  while #addrs > 0 do
-    reader:setAddr(table.remove(addrs))
-    local instr = instructions.parseInstruction(reader)
-    if instr:branchAddr() then
-      addrs[#addrs + 1] = instr:branchAddr()
+  local todo = { reader:addr() } -- Sequence of addresses
+  local done = {} -- Table of addr -> true
+  local code = {} -- Sequence of Instruction objects
+  while #todo > 0 do
+    local addr = table.remove(todo)
+    if not done[addr] then
+      done[addr] = true
+      reader:setAddr(addr)
+      local instr = instructions.parseInstruction(reader)
+      code[#code + 1] = instr
+      if instr:branchAddr() then
+        todo[#todo + 1] = instr:branchAddr()
+      end
+      if instr:nextAddr() then
+        todo[#todo + 1] = instr:nextAddr()
+      end
     end
-    if instr:nextAddr() then
-      addrs[#addrs + 1] = instr:nextAddr()
-    end
-    code[#code + 1] = instr
   end
 
   return Function(addr, kind, numLocals, code)

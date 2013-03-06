@@ -41,6 +41,10 @@ function Instruction:toCode(cc, s)
   return s:popPrefix():add("end")
 end
 
+function Instruction:addr()
+  return self._addr
+end
+
 function Instruction:branchAddr()
   return self._opcode:branchAddr(self, unpack(self._loads))
 end
@@ -64,8 +68,7 @@ local function Opcode(name, code, numLoads, numStores)
     branchAddr = function(self, loads)
       return nil
     end;
-    parse = function(self, reader)
-      local addr = reader:addr()
+    parse = function(self, addr, reader)
       local modes = {}
       local numModeBytes = bit.rshift(numLoads + numStores + 1, 1);
       for i = 1,numModeBytes do
@@ -151,9 +154,9 @@ local OPCODES = {
   -- [0x1E] = ushiftr
   [0x20] = BranchL("jump", "true") { alwaysExits = true },
   [0x22] = BranchLL("jz", "L2 == 0"),
-  [0x23] = BranchLL("jnz", "L2 != 0"),
+  [0x23] = BranchLL("jnz", "L2 ~= 0"),
   [0x24] = BranchLLL("jeq", "L2 == L3"),
-  [0x25] = BranchLLL("jne", "L2 != L3"),
+  [0x25] = BranchLLL("jne", "L2 ~= L3"),
   [0x26] = BranchLLL("jlt", "L2 < L3"),
   [0x27] = BranchLLL("jge", "L2 >= L3"),
   [0x28] = BranchLLL("jgt", "L2 > L3"),
@@ -277,6 +280,7 @@ local function UnknownOpcode(code)
 end
 
 function instructions.parseInstruction(reader)
+  local addr = reader:addr()
   local code
   local size = bit.rshift(reader:peek8(), 6)
   if size == 0 or size == 1 then
@@ -287,7 +291,7 @@ function instructions.parseInstruction(reader)
     code = reader:read32() - 0xc0000000
   end
   local opcode = OPCODES[code] or UnknownOpcode(code)
-  return opcode:parse(reader)
+  return opcode:parse(addr, reader)
 end
 
 return instructions

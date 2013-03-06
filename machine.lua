@@ -45,11 +45,6 @@ function Machine:pop()
   return result
 end
 
-function Machine:call(addr, ...)
-  print(string.format("* Indirect call: %08x", addr))
-  return self:functionPtr(addr)(self, ...)
-end
-
 function Machine:getLocal(offset)
   local index = bit.rshift(12 + offset, 2)
   return self.framePtr[index]
@@ -58,6 +53,15 @@ end
 function Machine:setLocal(offset, value)
   local index = bit.rshift(12 + offset, 2)
   self.framePtr[index] = value
+end
+
+function Machine:getMemSize()
+  return self.endMem
+end
+
+function Machine:call(addr, ...)
+  print(string.format("* Indirect call: %08x", addr))
+  return self:functionPtr(addr)(self, ...)
 end
 
 function Machine:labelName(addr)

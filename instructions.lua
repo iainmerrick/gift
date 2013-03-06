@@ -145,13 +145,13 @@ local OPCODES = {
   -- [0x13] = div
   -- [0x14] = mod
   -- [0x15] = neg
-  -- [0x18] = bitand
-  -- [0x19] = bitor
-  -- [0x1A] = bitxor
-  -- [0x1B] = bitnot
-  -- [0x1C] = shiftl
-  -- [0x1D] = sshiftr
-  -- [0x1E] = ushiftr
+  [0x18] = OpcodeLLS("bitand", "S1 = bit.band(L1, L2)"),
+  [0x19] = OpcodeLLS("bitor", "S1 = bit.bor(L1, L2)"),
+  [0x1A] = OpcodeLLS("bitxor", "S1 = bit.bxor(L1, L2)"),
+  [0x1B] = OpcodeLLS("bitnot", "S1 = bit.bnot(L1, L2)"),
+  [0x1C] = OpcodeLLS("shiftl", "S1 = bit.lshift(L1, L2)"),
+  [0x1D] = OpcodeLLS("sshiftr", "S1 = bit.arshift(L1, L2)"),
+  [0x1E] = OpcodeLLS("ushiftr", "S1 = bit.rshift(L1, L2)"),
   [0x20] = BranchL("jump", "true") { alwaysExits = true },
   [0x22] = BranchLL("jz", "L2 == 0"),
   [0x23] = BranchLL("jnz", "L2 ~= 0"),
@@ -208,7 +208,7 @@ local OPCODES = {
   [0x73] = OpcodeL("streamunichar"),
   -- [0x100] = gestalt
   -- [0x101] = debugtrap
-  [0x102] = OpcodeS("getmemsize"),
+  [0x102] = OpcodeS("getmemsize", "S1 = vm:getMemSize()"),
   [0x103] = OpcodeLS("setmemsize"),
   -- [0x104] = jumpabs
   -- [0x110] = random

@@ -141,10 +141,10 @@ local OPCODES = {
   [0x00] = Opcode("nop", "-- nop", 0, 0),
   [0x10] = OpcodeLLS("add", "S1 = L1 + L2"),
   [0x11] = OpcodeLLS("sub", "S1 = L1 - L2"),
-  -- [0x12] = mul
-  -- [0x13] = div
-  -- [0x14] = mod
-  -- [0x15] = neg
+  [0x12] = OpcodeLLS("mul", "S1 = L1 * L2"),
+  [0x13] = OpcodeLLS("div", "S1 = bit.tobit(L1 / L2)"),
+  [0x14] = OpcodeLLS("mod", "S1 = L1 % L2"),
+  [0x15] = OpcodeLS("neg", "S1 = -L1"),
   [0x18] = OpcodeLLS("bitand", "S1 = bit.band(L1, L2)"),
   [0x19] = OpcodeLLS("bitor", "S1 = bit.bor(L1, L2)"),
   [0x1A] = OpcodeLLS("bitxor", "S1 = bit.bxor(L1, L2)"),
@@ -189,9 +189,9 @@ local OPCODES = {
   -- [0x42] = copyb
   -- [0x44] = sexs
   -- [0x45] = sexb
-  [0x48] = OpcodeLLS("aload"),
-  [0x49] = OpcodeLLS("aloads"),
-  [0x4A] = OpcodeLLS("aloadb"),
+  [0x48] = OpcodeLLS("aload", "S1 = vm:reader(L1 + 4 * L2):read32()"),
+  [0x49] = OpcodeLLS("aloads", "S1 = vm:reader(L1 + 2 * L2):read16()"),
+  [0x4A] = OpcodeLLS("aloadb", "S1 = vm:reader(L1 + L2):read8()"),
   [0x4B] = OpcodeLLS("aloadbit"),
   [0x4C] = OpcodeLLL("astore"),
   [0x4D] = OpcodeLLL("astores"),
@@ -202,10 +202,10 @@ local OPCODES = {
   -- [0x52] = stkswap
   -- [0x53] = stkroll
   -- [0x54] = stkcopy
-  [0x70] = OpcodeL("streamchar"),
-  [0x71] = OpcodeL("streamnum"),
-  [0x72] = OpcodeL("streamstr"),
-  [0x73] = OpcodeL("streamunichar"),
+  [0x70] = OpcodeL("streamchar", "vm:streamChar(L1)"),
+  [0x71] = OpcodeL("streamnum", "vm:streamNum(L1)"),
+  [0x72] = OpcodeL("streamstr", "vm:streamStr(L1)"),
+  [0x73] = OpcodeL("streamunichar", "vm:streamChar(L1)"),
   -- [0x100] = gestalt
   -- [0x101] = debugtrap
   [0x102] = OpcodeS("getmemsize", "S1 = vm:getMemSize()"),

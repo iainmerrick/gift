@@ -4,6 +4,7 @@ local bit = require("bit")
 local ffi = require("ffi")
 
 local oo = require("oo")
+local strings = require("strings")
 
 local uint32_array_t = ffi.typeof("uint32_t[?]")
 
@@ -33,6 +34,14 @@ function Machine:reader(addr)
   return memory.Reader(self.memory, addr)
 end
 
+function Machine:read32(addr)
+  return memory.read32(self.memory, addr)
+end
+
+function Machine:write32(addr, value)
+  return memory.write32(self.memory, addr, value)
+end
+
 function Machine:push(value)
   self.stackPtr[0] = value
   self.stackPtr = self.stackPtr + 1
@@ -57,6 +66,18 @@ end
 
 function Machine:getMemSize()
   return self.endMem
+end
+
+function Machine:streamStr(addr)
+  strings.putString(self, addr)
+end
+
+function Machine:streamChar(c)
+  strings.putChar(c)
+end
+
+function Machine:streamNum(n)
+  strings.putNum(n)
 end
 
 function Machine:call(addr, ...)
@@ -111,7 +132,7 @@ function Machine:compile(addr)
   local s = utils.Joiner("\n"):pushPrefix("\t")
   s:add("sandbox = ...")
   local code = func:toCode(self, s)
-  print(s)
+  -- print(s)
   loadstring(tostring(s))(sandbox)
   return sandbox[self:baseName(addr)]
 end

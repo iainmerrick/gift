@@ -98,10 +98,10 @@ local function RamMode(size)
   return Mode("ram", size) {
     loadCode = function(self, value)
       -- TODO: ramStart is a compile-time constant
-      return "vm:read32(vm.ramStart() + " .. value .. ")"
+      return "vm:read32(vm.ramStart + " .. value .. ")"
     end;
     storeCode = function(self, value, var)
-      return "vm:write32(vm.ramStart() + " .. value .. ", " .. var .. ")"
+      return "vm:write32(vm.ramStart + " .. value .. ", " .. var .. ")"
     end;
   }
 end

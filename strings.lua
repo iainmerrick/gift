@@ -5,6 +5,7 @@ local io = require("io")
 
 local oo = require("oo")
 
+local band = bit.band
 local rshift = bit.rshift
 local lshift = bit.lshift
 
@@ -18,11 +19,11 @@ end
 
 function Bits:read1()
   if self._size == 0 then
-    self._bits = self._reader:read32()
-    self._size = 32
+    self._bits = self._reader:read8()
+    self._size = 8
   end
-  local b = rshift(self._bits, 31)
-  self._bits = lshift(self._bits, 1)
+  local b = band(self._bits, 1)
+  self._bits = rshift(self._bits, 1)
   self._size = self._size - 1
   return b
 end
@@ -32,7 +33,6 @@ function strings.putNum(n)
 end
 
 function strings.putChar(c)
-  -- print("putChar", c)
   if c > 127 then
     io.write(string.format("0x%x", c))
   else
@@ -41,7 +41,6 @@ function strings.putChar(c)
 end
 
 local function putCString(r)
-  -- print("putCString", r:addr())
   local c = r:read8()
   while c ~= 0 do
     strings.putChar(c)
@@ -76,16 +75,12 @@ local function putCompressedString(vm, r)
   local count = table:read32() -- Size of the table in bytes
   local root = table:read32() -- Address of the root node
   while true do
-    -- print(string.format("At the root, addr is now: 0x%x", root))
     local node = vm:reader(root)
     local kind = node:read8()
     while kind == BRANCH_NODE do
       local addr = node:read32()
       if bits:read1() == 1 then
         addr = node:read32()
-        -- print(string.format("read a 1, addr is now: 0x%x", addr))
-      else
-        -- print(string.format("read a 0, addr is now: 0x%x", addr))
       end
       node:setAddr(addr)
       kind = node:read8()

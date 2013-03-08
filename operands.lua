@@ -63,7 +63,7 @@ local function Mode(name, size)
 end
 
 local function ConstMode(size)
-  return Mode("const", size) {
+  return Mode("const" .. size, size) {
     isConst = true;
     const = function(self, value)
       if size == 0 then
@@ -84,7 +84,7 @@ end
 
 local function AddrMode(size)
   -- TODO: could set isConst if address is in ROM.
-  return Mode("addr", size) {
+  return Mode("addr" .. size, size) {
     loadCode = function(self, value)
       return "vm:read32(" .. value .. ")"
     end;
@@ -95,7 +95,7 @@ local function AddrMode(size)
 end
 
 local function RamMode(size)
-  return Mode("ram", size) {
+  return Mode("ram" .. size, size) {
     loadCode = function(self, value)
       -- TODO: ramStart is a compile-time constant
       return "vm:read32(vm.ramStart + " .. value .. ")"
@@ -106,8 +106,8 @@ local function RamMode(size)
   }
 end
 
-local function StackMode(size)
-  return Mode("stack", size) {
+local function StackMode()
+  return Mode("stack", 0) {
     loadCode = function(self, value)
       return "vm:pop()"
     end;
@@ -118,7 +118,7 @@ local function StackMode(size)
 end
 
 local function LocalMode(size)
-  return Mode("local", size) {
+  return Mode("local" .. size, size) {
     loadCode = function(self, value)
       return "vm:getLocal(" .. value .. ")"
     end;
@@ -137,7 +137,7 @@ local MODES = {
   [0x5] = AddrMode(1),
   [0x6] = AddrMode(2),
   [0x7] = AddrMode(4),
-  [0x8] = StackMode(0),
+  [0x8] = StackMode(),
   [0x9] = LocalMode(1),
   [0xa] = LocalMode(2),
   [0xb] = LocalMode(4),
